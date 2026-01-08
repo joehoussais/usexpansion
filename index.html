@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Expansion Antiplaybook | Red River West</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="#" class="logo">
+                <img src="assets/logos/RRW_LOGO_HORIZONTAL_WHITE.png" alt="Red River West" class="logo-img">
+            </a>
+            <nav class="nav">
+                <a href="#classifier" class="nav-link">Start Quiz</a>
+                <a href="#mistakes" class="nav-link">All Mistakes</a>
+                <a href="#share" class="nav-link">Share Yours</a>
+                <a href="#testimonials" class="nav-link">Stories</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="pixel-bg"></div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="pixel-icon">&#x1F3AE;</span>
+                <span>LEVEL UP YOUR US EXPANSION</span>
+            </div>
+            <h1 class="hero-title">The US Expansion<br><span class="highlight">Antiplaybook</span></h1>
+            <p class="hero-subtitle">Learn from the costly mistakes European founders make when scaling to the US. Don't lose $2M+ finding out the hard way.</p>
+            <button class="btn btn-primary pixel-btn" onclick="startQuiz()">
+                <span class="btn-icon">&#x25B6;</span>
+                Start Your Journey
+            </button>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-number">12</span>
+                    <span class="stat-label">Costly Mistakes</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">5</span>
+                    <span class="stat-label">Categories</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">$2M+</span>
+                    <span class="stat-label">Avg. Cost</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-illustration">
+            <div class="pixel-city">
+                <div class="building b1"></div>
+                <div class="building b2"></div>
+                <div class="building b3"></div>
+                <div class="building b4"></div>
+                <div class="building b5"></div>
+                <div class="flag-us"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Company Classifier Quiz -->
+    <section id="classifier" class="classifier-section">
+        <div class="section-header">
+            <h2 class="section-title pixel-text">Choose Your Character</h2>
+            <p class="section-subtitle">Answer a few questions to unlock personalized advice for your US expansion journey</p>
+        </div>
+
+        <div class="quiz-container" id="quizContainer">
+            <!-- Quiz Progress -->
+            <div class="quiz-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="progress-text" id="progressText">Question 1 of 4</span>
+            </div>
+
+            <!-- Quiz Questions -->
+            <div class="quiz-question active" id="q1">
+                <div class="question-icon">&#x1F3E2;</div>
+                <h3 class="question-title">What's your company vertical?</h3>
+                <div class="options-grid">
+                    <button class="option-btn" data-question="vertical" data-value="b2b-saas">
+                        <span class="option-icon">&#x1F4BB;</span>
+                        <span class="option-label">B2B SaaS</span>
+                    </button>
+                    <button class="option-btn" data-question="vertical" data-value="fintech">
+                        <span class="option-icon">&#x1F4B3;</span>
+                        <span class="option-label">Fintech</span>
+                    </button>
+                    <button class="option-btn" data-question="vertical" data-value="consumer">
+                        <span class="option-icon">&#x1F6D2;</span>
+                        <span class="option-label">Consumer</span>
+                    </button>
+                    <button class="option-btn" data-question="vertical" data-value="deeptech">
+                        <span class="option-icon">&#x1F9EC;</span>
+                        <span class="option-label">Deep Tech / AI</span>
+                    </button>
+                    <button class="option-btn" data-question="vertical" data-value="marketplace">
+                        <span class="option-icon">&#x1F3EA;</span>
+                        <span class="option-label">Marketplace</span>
+                    </button>
+                    <button class="option-btn" data-question="vertical" data-value="other">
+                        <span class="option-icon">&#x2728;</span>
+                        <span class="option-label">Other</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="quiz-question" id="q2">
+                <div class="question-icon">&#x1F4C8;</div>
+                <h3 class="question-title">What's your funding stage?</h3>
+                <div class="options-grid">
+                    <button class="option-btn" data-question="stage" data-value="seed">
+                        <span class="option-icon">&#x1F331;</span>
+                        <span class="option-label">Seed</span>
+                    </button>
+                    <button class="option-btn" data-question="stage" data-value="series-a">
+                        <span class="option-icon">&#x1F680;</span>
+                        <span class="option-label">Series A</span>
+                    </button>
+                    <button class="option-btn" data-question="stage" data-value="series-b">
+                        <span class="option-icon">&#x1F31F;</span>
+                        <span class="option-label">Series B+</span>
+                    </button>
+                    <button class="option-btn" data-question="stage" data-value="growth">
+                        <span class="option-icon">&#x1F451;</span>
+                        <span class="option-label">Growth / Late</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="quiz-question" id="q3">
+                <div class="question-icon">&#x1F5FA;</div>
+                <h3 class="question-title">Where are you in your US journey?</h3>
+                <div class="options-grid options-vertical">
+                    <button class="option-btn wide" data-question="journey" data-value="exploring">
+                        <span class="option-icon">&#x1F50D;</span>
+                        <span class="option-text">
+                            <span class="option-label">Exploring</span>
+                            <span class="option-desc">Researching the market, no US presence yet</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="journey" data-value="early">
+                        <span class="option-icon">&#x1F6EB;</span>
+                        <span class="option-text">
+                            <span class="option-label">Early Entry</span>
+                            <span class="option-desc">First US hire or just opened US entity</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="journey" data-value="scaling">
+                        <span class="option-icon">&#x1F4CA;</span>
+                        <span class="option-text">
+                            <span class="option-label">Scaling</span>
+                            <span class="option-desc">5-20 US employees, growing revenue</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="journey" data-value="established">
+                        <span class="option-icon">&#x1F3C6;</span>
+                        <span class="option-text">
+                            <span class="option-label">Established</span>
+                            <span class="option-desc">Significant US team, US is major market</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="quiz-question" id="q4">
+                <div class="question-icon">&#x26A0;</div>
+                <h3 class="question-title">What's your biggest worry about US expansion?</h3>
+                <div class="options-grid options-vertical">
+                    <button class="option-btn wide" data-question="worry" data-value="recruiting">
+                        <span class="option-icon">&#x1F465;</span>
+                        <span class="option-text">
+                            <span class="option-label">Hiring the Right People</span>
+                            <span class="option-desc">Finding talent, avoiding bad hires</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="worry" data-value="product">
+                        <span class="option-icon">&#x1F3AF;</span>
+                        <span class="option-text">
+                            <span class="option-label">Product-Market Fit</span>
+                            <span class="option-desc">Will our product work in the US?</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="worry" data-value="strategy">
+                        <span class="option-icon">&#x1F9ED;</span>
+                        <span class="option-text">
+                            <span class="option-label">Go-to-Market Strategy</span>
+                            <span class="option-desc">How to enter, where to start</span>
+                        </span>
+                    </button>
+                    <button class="option-btn wide" data-question="worry" data-value="operations">
+                        <span class="option-icon">&#x2699;</span>
+                        <span class="option-text">
+                            <span class="option-label">Operations & Legal</span>
+                            <span class="option-desc">Entity setup, regulations, compliance</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-container hidden" id="resultsContainer">
+            <div class="profile-card" id="profileCard">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar"></div>
+                    <div class="profile-info">
+                        <h3 class="profile-title" id="profileTitle">Your Company Profile</h3>
+                        <p class="profile-type" id="profileType"></p>
+                    </div>
+                    <div class="profile-level">
+                        <span class="level-label">Expansion Level</span>
+                        <span class="level-badge" id="levelBadge">1</span>
+                    </div>
+                </div>
+                <div class="profile-attributes" id="profileAttributes"></div>
+            </div>
+
+            <div class="top-mistakes">
+                <h3 class="mistakes-header">
+                    <span class="pixel-icon">&#x26A0;</span>
+                    Top 3 Mistakes to Avoid
+                </h3>
+                <div class="mistakes-preview" id="mistakesPreview"></div>
+                <button class="btn btn-secondary" onclick="showAllMistakes()">View All Mistakes</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- All Mistakes Section -->
+    <section id="mistakes" class="mistakes-section">
+        <div class="section-header">
+            <h2 class="section-title pixel-text">The Mistake Database</h2>
+            <p class="section-subtitle">12 costly mistakes European founders make when expanding to the US</p>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Recruiting">Recruiting</button>
+            <button class="filter-btn" data-filter="Product">Product</button>
+            <button class="filter-btn" data-filter="Strategy">Strategy</button>
+            <button class="filter-btn" data-filter="Marketing">Marketing</button>
+            <button class="filter-btn" data-filter="Regulation">Regulation</button>
+        </div>
+
+        <div class="mistakes-grid" id="mistakesGrid"></div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="testimonials-section">
+        <div class="section-header">
+            <h2 class="section-title pixel-text">Founder Stories</h2>
+            <p class="section-subtitle">Real experiences from European founders who've made the journey</p>
+        </div>
+        <div class="testimonials-grid" id="testimonialsGrid"></div>
+    </section>
+
+    <!-- Share Your Mistake Section -->
+    <section id="share" class="share-section">
+        <div class="section-header">
+            <h2 class="section-title pixel-text">Share Your Mistake</h2>
+            <p class="section-subtitle">Learned something the hard way? Help other founders avoid your pitfalls.</p>
+        </div>
+
+        <div class="share-container">
+            <!-- Submission Form -->
+            <div class="share-form-wrapper" id="shareFormWrapper">
+                <div class="share-prompt" id="sharePrompt">
+                    <div class="share-icon">&#x1F4DD;</div>
+                    <p>Complete the quiz first to share your experience!</p>
+                    <button class="btn btn-secondary pixel-btn" onclick="startQuiz()">
+                        <span class="btn-icon">&#x25B6;</span>
+                        Take the Quiz
+                    </button>
+                </div>
+
+                <form class="share-form hidden" id="shareForm" onsubmit="handleMistakeSubmit(event)">
+                    <div class="form-header">
+                        <div class="submitter-profile" id="submitterProfile"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <div class="category-select" id="categorySelect">
+                            <button type="button" class="category-btn" data-category="Recruiting">
+                                <span>&#x1F465;</span> Recruiting
+                            </button>
+                            <button type="button" class="category-btn" data-category="Product">
+                                <span>&#x1F3AF;</span> Product
+                            </button>
+                            <button type="button" class="category-btn" data-category="Strategy">
+                                <span>&#x1F9ED;</span> Strategy
+                            </button>
+                            <button type="button" class="category-btn" data-category="Marketing">
+                                <span>&#x1F4E3;</span> Marketing
+                            </button>
+                            <button type="button" class="category-btn" data-category="Regulation">
+                                <span>&#x2696;</span> Regulation
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Your Mistake Title</label>
+                        <input type="text" class="form-input" id="mistakeTitle" placeholder="e.g., Hired too fast without references" required maxlength="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">What happened?</label>
+                        <textarea class="form-textarea" id="mistakeStory" placeholder="Share the story... What did you do? What was the cost? What would you do differently?" required maxlength="500"></textarea>
+                        <span class="char-count"><span id="charCount">0</span>/500</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estimated Cost (optional)</label>
+                        <input type="text" class="form-input" id="mistakeCost" placeholder="e.g., $50,000 or 6 months delay">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary pixel-btn submit-btn">
+                        <span class="btn-icon">&#x1F680;</span>
+                        Share My Mistake
+                    </button>
+                </form>
+            </div>
+
+            <!-- Community Submissions -->
+            <div class="community-mistakes">
+                <h3 class="community-header">
+                    <span class="pixel-icon">&#x1F465;</span>
+                    Community Submissions
+                </h3>
+                <div class="community-grid" id="communityGrid">
+                    <!-- Will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <div class="cta-icon">&#x1F3C1;</div>
+            <h2 class="cta-title">Ready to Level Up?</h2>
+            <p class="cta-text">Red River West helps European founders navigate their US expansion journey. Let's talk.</p>
+            <a href="https://www.redriverwest.com/" target="_blank" class="btn btn-primary pixel-btn">
+                <span class="btn-icon">&#x1F680;</span>
+                Visit Red River West
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <img src="assets/logos/RRW_LOGO_WHITE.png" alt="Red River West" class="footer-logo">
+            <p class="footer-text">Helping European founders win in America</p>
+            <p class="footer-copyright">&copy; 2026 Red River West. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Email Gate Modal -->
+    <div class="modal" id="emailModal">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div class="modal-icon">&#x1F512;</div>
+            <h3 class="modal-title">Unlock Full Content</h3>
+            <p class="modal-text">Get access to detailed advice, remediation steps, and real examples from founders who've been there.</p>
+            <form class="email-form" id="emailForm" onsubmit="handleEmailSubmit(event)">
+                <input type="email" class="email-input" placeholder="your@email.com" required id="emailInput">
+                <button type="submit" class="btn btn-primary">Unlock Content</button>
+            </form>
+            <p class="modal-note">We respect your privacy. Unsubscribe anytime.</p>
+        </div>
+    </div>
+
+    <!-- Mistake Detail Modal -->
+    <div class="modal" id="mistakeModal">
+        <div class="modal-overlay" onclick="closeMistakeModal()"></div>
+        <div class="modal-content modal-large">
+            <button class="modal-close" onclick="closeMistakeModal()">&times;</button>
+            <div id="mistakeDetail"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
