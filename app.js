@@ -11,18 +11,68 @@ const state = {
     email: localStorage.getItem('rrw_email') || null,
     userProfile: null,
     selectedCategory: null,
+    // Auth state
+    user: null,
+    isAdmin: false,
     // Data loaded from Supabase
     mistakesData: [],
     testimonialsData: [],
-    communityMistakes: []
+    communityMistakes: [],
+    // New modules
+    quizEngine: null,
+    tagManager: null,
+    contentBuilder: null
 };
+
+// Admin email list (you can also store this in Supabase)
+const ADMIN_EMAILS = [
+    'joseph@redriverwest.com',
+    'admin@redriverwest.com',
+    'team@redriverwest.com'
+];
+
+// Mobile Nav Toggle
+function toggleMobileNav() {
+    const burger = document.getElementById('burgerMenu');
+    const nav = document.getElementById('mainNav');
+    burger.classList.toggle('active');
+    nav.classList.toggle('active');
+    document.body.style.overflow = nav.classList.contains('active') ? 'hidden' : '';
+}
+
+function closeMobileNav() {
+    const burger = document.getElementById('burgerMenu');
+    const nav = document.getElementById('mainNav');
+    burger.classList.remove('active');
+    nav.classList.remove('active');
+    document.body.style.overflow = '';
+}
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
-    // Load data from Supabase
-    await loadAllData();
+    try {
+        // Check auth status first
+        await checkAuthStatus();
+    } catch (error) {
+        console.error('Auth check failed:', error);
+    }
 
-    // Initialize UI
+    try {
+        // Initialize new modules
+        await initNewModules();
+    } catch (error) {
+        console.error('Module initialization failed:', error);
+    }
+
+    try {
+        // Load data from Supabase
+        await loadAllData();
+    } catch (error) {
+        console.error('Data loading failed:', error);
+        useFallbackData();
+    }
+
+    // Initialize UI - these must always run
     initQuiz();
     initMistakesGrid();
     initTestimonials();
@@ -30,7 +80,87 @@ document.addEventListener('DOMContentLoaded', async function() {
     checkEmailStatus();
     initShareSection();
     renderCommunityMistakes();
+    updateAuthUI();
+
+    // Listen for auth changes
+    try {
+        supabase.auth.onAuthStateChange((event, session) => {
+            state.user = session?.user || null;
+            state.isAdmin = state.user ? ADMIN_EMAILS.includes(state.user.email) : false;
+            updateAuthUI();
+            updateShareSectionAuth();
+        });
+    } catch (error) {
+        console.error('Auth state change listener failed:', error);
+    }
 });
+
+// ========================================
+// NEW MODULES INITIALIZATION
+// ========================================
+
+async function initNewModules() {
+    // Initialize Tag Manager
+    if (typeof TagManager !== 'undefined') {
+        state.tagManager = new TagManager();
+        await state.tagManager.init(supabase);
+        console.log('Tag Manager initialized');
+    }
+
+    // Initialize Quiz Engine
+    if (typeof QuizEngine !== 'undefined') {
+        state.quizEngine = new QuizEngine({
+            onQuestionChange: handleQuizQuestionChange,
+            onComplete: handleQuizComplete,
+            onTagAssigned: handleTagAssigned
+        });
+        await state.quizEngine.init(supabase);
+        console.log('Quiz Engine initialized');
+    }
+
+    // Initialize Content Builder (only for admin)
+    if (typeof ContentBuilder !== 'undefined' && state.tagManager) {
+        state.contentBuilder = new ContentBuilder({
+            supabase: supabase,
+            tagManager: state.tagManager,
+            onSave: handleContentSave,
+            onDelete: handleContentDelete
+        });
+        console.log('Content Builder ready');
+    }
+}
+
+function handleQuizQuestionChange(question) {
+    console.log('Quiz question changed:', question);
+}
+
+function handleQuizComplete(profile) {
+    console.log('Quiz completed with profile:', profile);
+    // Show defense tech warning if applicable
+    if (profile.hasDefenseHqWarning) {
+        showDefenseWarningModal();
+    }
+}
+
+function handleTagAssigned(tag) {
+    console.log('Tag assigned:', tag);
+}
+
+function handleContentSave(mistakeId) {
+    console.log('Content saved:', mistakeId);
+    // Reload mistakes
+    loadAllData().then(() => {
+        initMistakesGrid();
+    });
+}
+
+function handleContentDelete(mistakeId) {
+    console.log('Content deleted:', mistakeId);
+    // Reload mistakes
+    loadAllData().then(() => {
+        initMistakesGrid();
+    });
+}
 
 // ========================================
 // SUPABASE DATA LOADING
@@ -45,11 +175,24 @@ async function loadAllData() {
             loadCommunityMistakes()
         ]);
 
-        state.mistakesData = mistakes;
-        state.testimonialsData = testimonials;
-        state.communityMistakes = community;
+        // Only use Supabase data if we got results
+        if (mistakes && mistakes.length > 0) {
+            state.mistakesData = mistakes;
+        } else {
+            console.log('No mistakes from Supabase, using fallback');
+            state.mistakesData = typeof mistakesData !== 'undefined' ? mistakesData : [];
+        }
 
-        console.log('Data loaded successfully from Supabase');
+        if (testimonials && testimonials.length > 0) {
+            state.testimonialsData = testimonials;
+        } else {
+            console.log('No testimonials from Supabase, using fallback');
+            state.testimonialsData = typeof testimonialsData !== 'undefined' ? testimonialsData : [];
+        }
+
+        state.communityMistakes = community || [];
+
+        console.log('Data loaded:', state.mistakesData.length, 'mistakes,', state.testimonialsData.length, 'testimonials');
     } catch (error) {
         console.error('Error loading data:', error);
         // Fall back to hardcoded data if Supabase fails
@@ -58,80 +201,110 @@ async function loadAllData() {
 }
 
 async function loadMistakes() {
-    const { data, error } = await supabase
-        .from('mistakes')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
+    try {
+        const { data, error } = await supabase
+            .from('mistakes')
+            .select('*')
+            .eq('is_active', true)
+            .order('display_order');
 
-    if (error) throw error;
-
-    // Transform to match expected format
-    return data.map(m => ({
-        id: m.id,
-        title: m.title,
-        icon: m.icon,
-        category: m.category,
-        cost: m.cost,
-        preview: m.preview,
-        relevance: {
-            verticals: m.relevance_verticals || [],
-            stages: m.relevance_stages || [],
-            journeys: m.relevance_journeys || [],
-            worries: m.relevance_worries || []
-        },
-        content: {
-            problem: m.problem,
-            points: typeof m.points === 'string' ? JSON.parse(m.points) : m.points,
-            remediation: m.remediation,
-            resource: m.resource_url
+        if (error) {
+            console.error('Supabase mistakes error:', error);
+            return [];
         }
-    }));
+
+        if (!data || data.length === 0) return [];
+
+        // Transform to match expected format
+        return data.map(m => ({
+            id: m.id,
+            title: m.title,
+            icon: m.icon,
+            category: m.category,
+            cost: m.cost,
+            preview: m.preview,
+            relevance: {
+                verticals: m.relevance_verticals || [],
+                stages: m.relevance_stages || [],
+                journeys: m.relevance_journeys || [],
+                worries: m.relevance_worries || []
+            },
+            content: {
+                problem: m.problem,
+                points: typeof m.points === 'string' ? JSON.parse(m.points) : m.points,
+                remediation: m.remediation,
+                resource: m.resource_url
+            }
+        }));
+    } catch (err) {
+        console.error('loadMistakes failed:', err);
+        return [];
+    }
 }
 
 async function loadTestimonials() {
-    const { data, error } = await supabase
-        .from('testimonials')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
+    try {
+        const { data, error } = await supabase
+            .from('testimonials')
+            .select('*')
+            .eq('is_active', true)
+            .order('display_order');
 
-    if (error) throw error;
+        if (error) {
+            console.error('Supabase testimonials error:', error);
+            return [];
+        }
 
-    return data.map(t => ({
-        id: t.id,
-        content: t.content,
-        author: t.author_name,
-        role: t.author_role,
-        avatar: t.author_avatar
-    }));
+        if (!data || data.length === 0) return [];
+
+        return data.map(t => ({
+            id: t.id,
+            content: t.content,
+            author: t.author_name,
+            role: t.author_role,
+            avatar: t.author_avatar
+        }));
+    } catch (err) {
+        console.error('loadTestimonials failed:', err);
+        return [];
+    }
 }
 
 async function loadCommunityMistakes() {
-    const { data, error } = await supabase
-        .from('community_mistakes')
-        .select('*')
-        .eq('approved', true)
-        .order('created_at', { ascending: false });
+    try {
+        const { data, error } = await supabase
+            .from('community_mistakes')
+            .select('*')
+            .eq('approved', true)
+            .order('created_at', { ascending: false });
 
-    if (error) throw error;
+        if (error) {
+            console.error('Supabase community_mistakes error:', error);
+            return [];
+        }
 
-    return data.map(m => ({
-        id: m.id,
-        title: m.title,
-        story: m.story,
-        cost: m.cost,
-        category: m.category,
-        author: {
-            name: m.author_name,
-            avatar: m.author_avatar,
-            level: m.author_level,
-            attributes: typeof m.author_attributes === 'string'
-                ? JSON.parse(m.author_attributes)
-                : m.author_attributes
-        },
-        timestamp: m.created_at
-    }));
+        if (!data || data.length === 0) return [];
+
+        return data.map(m => ({
+            id: m.id,
+            title: m.title,
+            story: m.story,
+            cost: m.cost,
+            category: m.category,
+            author: {
+                name: m.author_name,
+                avatar: m.author_avatar,
+                level: m.author_level,
+                attributes: typeof m.author_attributes === 'string'
+                    ? JSON.parse(m.author_attributes)
+                    : m.author_attributes
+            },
+            timestamp: m.created_at
+        }));
+    } catch (err) {
+        console.error('loadCommunityMistakes failed:', err);
+        return [];
+    }
 }
 
 function useFallbackData() {
@@ -154,6 +327,114 @@ function initQuiz() {
     document.querySelectorAll('.option-btn').forEach(btn => {
         btn.addEventListener('click', handleOptionClick);
     });
+
+    // Initialize adventure character at starting position
+    initAdventureCharacter();
+}
+
+// ========================================
+// ADVENTURE CHARACTER ANIMATION
+// ========================================
+
+function initAdventureCharacter() {
+    const character = document.getElementById('founderCharacter');
+    if (character) {
+        character.setAttribute('data-step', '0');
+    }
+
+    // Initialize SVG path progress
+    const pathProgress = document.getElementById('pathProgress');
+    if (pathProgress) {
+        const pathLength = pathProgress.getTotalLength();
+        pathProgress.style.strokeDasharray = '12 8';
+        pathProgress.style.strokeDashoffset = pathLength;
+    }
+
+    // Mark start checkpoint as reached
+    const startDot = document.querySelector('.checkpoint-dot[data-step="0"]');
+    if (startDot) startDot.classList.add('reached');
+}
+
+function moveCharacterToStep(step) {
+    const character = document.getElementById('founderCharacter');
+    if (!character) return;
+
+    // Add walking animation
+    character.classList.add('walking');
+
+    // Update character position
+    character.setAttribute('data-step', step.toString());
+
+    // Animate the SVG path progress
+    const pathProgress = document.getElementById('pathProgress');
+    if (pathProgress) {
+        const pathLength = pathProgress.getTotalLength();
+        const progress = step / state.totalQuestions;
+        const offset = pathLength * (1 - progress);
+        pathProgress.style.strokeDashoffset = offset;
+    }
+
+    // Mark checkpoints as reached
+    for (let i = 0; i <= step; i++) {
+        // SVG checkpoint groups
+        const checkpointGroup = document.querySelector(`.checkpoint-group[data-step="${i}"]`);
+        if (checkpointGroup) checkpointGroup.classList.add('reached');
+
+        // SVG checkpoint dots
+        const checkpointDot = document.querySelector(`.checkpoint-dot[data-step="${i}"]`);
+        if (checkpointDot) checkpointDot.classList.add('reached');
+
+        // Journey labels below the map
+        const journeyLabel = document.querySelector(`.journey-label[data-step="${i}"]`);
+        if (journeyLabel) journeyLabel.classList.add('reached');
+    }
+
+    // Stop walking animation after movement completes
+    setTimeout(() => {
+        character.classList.remove('walking');
+
+        // Check if character arrived at destination (USA)
+        if (step >= state.totalQuestions) {
+            character.classList.add('arrived');
+
+            // Mark treasure as reached
+            const treasureMarker = document.querySelector('.treasure-marker');
+            if (treasureMarker) treasureMarker.classList.add('reached');
+
+            setTimeout(() => {
+                character.classList.remove('arrived');
+            }, 1600);
+        }
+    }, 800);
+}
+
+function resetAdventureCharacter() {
+    const character = document.getElementById('founderCharacter');
+    if (character) {
+        character.setAttribute('data-step', '0');
+        character.classList.remove('walking', 'arrived');
+    }
+
+    // Reset SVG path progress
+    const pathProgress = document.getElementById('pathProgress');
+    if (pathProgress) {
+        const pathLength = pathProgress.getTotalLength();
+        pathProgress.style.strokeDashoffset = pathLength;
+    }
+
+    // Reset all SVG checkpoints
+    document.querySelectorAll('.checkpoint-group, .checkpoint-dot, .treasure-marker').forEach(el => {
+        el.classList.remove('reached');
+    });
+
+    // Reset journey labels
+    document.querySelectorAll('.journey-label').forEach(el => {
+        el.classList.remove('reached');
+    });
+
+    // Mark starting position
+    const startDot = document.querySelector('.checkpoint-dot[data-step="0"]');
+    if (startDot) startDot.classList.add('reached');
 }
 
 function handleOptionClick(e) {
@@ -186,6 +467,15 @@ function goToQuestion(num) {
     state.currentQuestion = num;
     document.querySelector(`#q${num}`).classList.add('active');
     updateProgress();
+
+    // Move the adventure character
+    moveCharacterToStep(num);
+}
+
+function previousQuestion() {
+    if (state.currentQuestion > 1) {
+        goToQuestion(state.currentQuestion - 1);
+    }
 }
 
 function updateProgress() {
@@ -195,19 +485,25 @@ function updateProgress() {
 }
 
 function showResults() {
-    document.getElementById('quizContainer').classList.add('hidden');
+    // Move character to final destination (USA!)
+    moveCharacterToStep(state.totalQuestions);
 
-    const profile = getProfile(state.answers);
-    const topMistakes = getRelevantMistakes(state.answers);
+    // Wait for character animation before showing results
+    setTimeout(() => {
+        document.getElementById('quizContainer').classList.add('hidden');
 
-    state.userProfile = profile;
+        const profile = getProfile(state.answers);
+        const topMistakes = getRelevantMistakes(state.answers);
 
-    renderProfile(profile);
-    renderTopMistakes(topMistakes);
+        state.userProfile = profile;
 
-    document.getElementById('resultsContainer').classList.remove('hidden');
-    updateShareSection();
-    document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+        renderProfile(profile);
+        renderTopMistakes(topMistakes);
+
+        document.getElementById('resultsContainer').classList.remove('hidden');
+        updateShareSection();
+        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
 }
 
 // Profile generation (moved from data.js to work with dynamic data)
@@ -277,7 +573,39 @@ function renderTopMistakes(mistakes) {
 }
 
 function startQuiz() {
-    document.getElementById('classifier').scrollIntoView({ behavior: 'smooth' });
+    // Reset quiz state if retaking
+    if (state.currentQuestion > 1 || Object.keys(state.answers).length > 0) {
+        state.currentQuestion = 1;
+        state.answers = {};
+
+        // Reset question display
+        document.querySelectorAll('.quiz-question').forEach(q => q.classList.remove('active'));
+        document.querySelector('#q1').classList.add('active');
+
+        // Reset option selections
+        document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+
+        // Reset progress bar
+        updateProgress();
+
+        // Reset adventure character
+        resetAdventureCharacter();
+
+        // Show quiz container, hide results
+        document.getElementById('quizContainer').classList.remove('hidden');
+        document.getElementById('resultsContainer').classList.add('hidden');
+    }
+
+    // Scroll to quiz with offset to show all options
+    const quizContainer = document.getElementById('quizContainer');
+    const headerOffset = 80;
+    const elementPosition = quizContainer.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+    window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+    });
 }
 
 // ========================================
@@ -377,18 +705,43 @@ function showAllMistakes() {
 
 function initTestimonials() {
     const grid = document.getElementById('testimonialsGrid');
-    const html = state.testimonialsData.map(testimonial => `
-        <div class="testimonial-card">
-            <p class="testimonial-content">${testimonial.content}</p>
-            <div class="testimonial-author">
-                <div class="author-avatar">${testimonial.avatar}</div>
-                <div class="author-info">
-                    <span class="author-name">${testimonial.author}</span>
-                    <span class="author-role">${testimonial.role}</span>
+    const html = state.testimonialsData.map(testimonial => {
+        if (testimonial.type === 'video') {
+            return `
+                <div class="testimonial-card video-testimonial">
+                    <div class="video-wrapper">
+                        <iframe
+                            src="https://www.youtube.com/embed/${testimonial.youtubeId}"
+                            title="${testimonial.title}"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">&#x1F3AC;</div>
+                        <div class="author-info">
+                            <span class="author-name">${testimonial.author}</span>
+                            <span class="author-role">${testimonial.role}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    `).join('');
+            `;
+        } else {
+            return `
+                <div class="testimonial-card">
+                    <p class="testimonial-content">${testimonial.content}</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">${testimonial.avatar}</div>
+                        <div class="author-info">
+                            <span class="author-name">${testimonial.author}</span>
+                            <span class="author-role">${testimonial.role}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
     grid.innerHTML = html;
 }
 
@@ -557,7 +910,14 @@ function updateCharCount() {
 function updateShareSection() {
     if (!state.userProfile) return;
 
-    document.getElementById('sharePrompt').style.display = 'none';
+    // Only show form if user is logged in
+    if (!state.user) {
+        updateShareSectionAuth();
+        return;
+    }
+
+    document.getElementById('authPrompt').classList.add('hidden');
+    document.getElementById('sharePrompt').classList.add('hidden');
     document.getElementById('shareForm').classList.remove('hidden');
 
     const profileHtml = `
@@ -572,6 +932,13 @@ function updateShareSection() {
 
 async function handleMistakeSubmit(e) {
     e.preventDefault();
+
+    // Check if user is logged in
+    if (!state.user) {
+        showToast('Please sign in to submit your story');
+        showAuthModal('login');
+        return;
+    }
 
     if (!state.selectedCategory) {
         showToast('Please select a category first!');
@@ -598,6 +965,7 @@ async function handleMistakeSubmit(e) {
             author_avatar: state.userProfile.avatar,
             author_level: state.userProfile.level,
             author_attributes: JSON.stringify(state.userProfile.attributes),
+            user_id: state.user.id,
             approved: false  // Requires admin approval
         });
 
@@ -661,4 +1029,705 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ========================================
+// AUTHENTICATION
+// ========================================
+
+async function checkAuthStatus() {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        state.user = session?.user || null;
+        state.isAdmin = state.user ? ADMIN_EMAILS.includes(state.user.email) : false;
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        state.user = null;
+        state.isAdmin = false;
+    }
+}
+
+function updateAuthUI() {
+    const navAuth = document.getElementById('navAuth');
+    const adminLink = document.getElementById('adminLink');
+
+    if (state.user) {
+        // User is logged in
+        const initials = state.user.user_metadata?.name
+            ? state.user.user_metadata.name.split(' ').map(n => n[0]).join('').toUpperCase()
+            : state.user.email[0].toUpperCase();
+
+        navAuth.innerHTML = `
+            <div class="user-menu">
+                <div class="user-avatar">${initials}</div>
+                <button class="nav-link nav-auth-btn" onclick="handleLogout()">Sign Out</button>
+            </div>
+        `;
+
+        // Show admin link if user is admin
+        if (state.isAdmin) {
+            adminLink.classList.remove('hidden');
+        } else {
+            adminLink.classList.add('hidden');
+        }
+    } else {
+        // User is logged out
+        navAuth.innerHTML = `
+            <button class="nav-link nav-auth-btn" onclick="showAuthModal('login')">Sign In</button>
+        `;
+        adminLink.classList.add('hidden');
+    }
+}
+
+function updateShareSectionAuth() {
+    const authPrompt = document.getElementById('authPrompt');
+    const sharePrompt = document.getElementById('sharePrompt');
+    const shareForm = document.getElementById('shareForm');
+
+    if (state.user) {
+        // User is logged in - show quiz prompt or form
+        authPrompt.classList.add('hidden');
+        if (state.userProfile) {
+            sharePrompt.classList.add('hidden');
+            shareForm.classList.remove('hidden');
+        } else {
+            sharePrompt.classList.remove('hidden');
+            shareForm.classList.add('hidden');
+        }
+    } else {
+        // User is logged out - show auth prompt
+        authPrompt.classList.remove('hidden');
+        sharePrompt.classList.add('hidden');
+        shareForm.classList.add('hidden');
+    }
+}
+
+function showAuthModal(mode = 'login') {
+    document.getElementById('authModal').classList.add('active');
+    switchAuthMode(mode);
+}
+
+function closeAuthModal() {
+    document.getElementById('authModal').classList.remove('active');
+}
+
+function switchAuthMode(mode) {
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+
+    if (mode === 'login') {
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+    } else {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) throw error;
+
+        closeAuthModal();
+        showToast('Welcome back!');
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast(error.message || 'Login failed. Please try again.');
+    }
+}
+
+async function handleSignup(e) {
+    e.preventDefault();
+
+    const nameInput = document.getElementById('signupName');
+    const emailInput = document.getElementById('signupEmail');
+    const passwordInput = document.getElementById('signupPassword');
+
+    if (!nameInput || !emailInput || !passwordInput) {
+        showToast('Form error. Please refresh the page.');
+        return;
+    }
+
+    const name = nameInput.value;
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+        showToast('Please fill in all fields.');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    name: name
+                }
+            }
+        });
+
+        if (error) throw error;
+
+        closeAuthModal();
+        showToast('Account created! Check your email to verify.');
+    } catch (error) {
+        console.error('Signup error:', error);
+        showToast(error.message || 'Signup failed. Please try again.');
+    }
+}
+
+async function handleLogout() {
+    try {
+        await supabase.auth.signOut();
+        state.user = null;
+        state.isAdmin = false;
+        updateAuthUI();
+        updateShareSectionAuth();
+        showToast('Signed out successfully');
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+// ========================================
+// ADMIN PANEL
+// ========================================
+
+async function openAdminPanel() {
+    // If not logged in, prompt to sign in first
+    if (!state.user) {
+        showAuthModal('login');
+        showToast('Please sign in with an admin account');
+        return;
+    }
+
+    // If logged in but not admin
+    if (!state.isAdmin) {
+        showToast('Access denied - admin account required');
+        return;
+    }
+
+    document.getElementById('adminModal').classList.add('active');
+    await loadPendingSubmissions();
+}
+
+function closeAdminModal() {
+    document.getElementById('adminModal').classList.remove('active');
+}
+
+function switchAdminTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.add('active');
+
+    // Update content
+    document.querySelectorAll('.admin-content').forEach(c => c.classList.remove('active'));
+
+    // Map tab names to element IDs
+    const tabIdMap = {
+        'pending': 'adminPending',
+        'approved': 'adminApproved',
+        'subscribers': 'adminSubscribers',
+        'content-builder': 'adminContentBuilder',
+        'tags': 'adminTags'
+    };
+
+    const elementId = tabIdMap[tab] || `admin${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+    document.getElementById(elementId).classList.add('active');
+
+    // Load data for tab
+    if (tab === 'pending') loadPendingSubmissions();
+    else if (tab === 'approved') loadApprovedSubmissions();
+    else if (tab === 'subscribers') loadSubscribers();
+    else if (tab === 'content-builder') initContentBuilderTab();
+    else if (tab === 'tags') initTagsTab();
+}
+
+async function loadPendingSubmissions() {
+    const grid = document.getElementById('pendingGrid');
+    grid.innerHTML = '<p class="admin-loading">Loading...</p>';
+
+    try {
+        const { data, error } = await supabase
+            .from('community_mistakes')
+            .select('*')
+            .eq('approved', false)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+            grid.innerHTML = '<p class="admin-empty">No pending submissions</p>';
+            return;
+        }
+
+        grid.innerHTML = data.map(s => `
+            <div class="admin-card" data-id="${s.id}">
+                <div class="admin-card-header">
+                    <div>
+                        <div class="admin-card-title">${escapeHtml(s.title)}</div>
+                        <div class="admin-card-meta">${s.category} • ${s.author_name} • ${new Date(s.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+                <div class="admin-card-body">${escapeHtml(s.story)}</div>
+                ${s.cost ? `<div class="admin-card-meta">Cost: ${escapeHtml(s.cost)}</div>` : ''}
+                <div class="admin-card-actions">
+                    <button class="admin-btn admin-btn-approve" onclick="approveSubmission(${s.id})">Approve</button>
+                    <button class="admin-btn admin-btn-reject" onclick="rejectSubmission(${s.id})">Reject</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading pending:', error);
+        grid.innerHTML = '<p class="admin-empty">Error loading submissions</p>';
+    }
+}
+
+async function loadApprovedSubmissions() {
+    const grid = document.getElementById('approvedGrid');
+    grid.innerHTML = '<p class="admin-loading">Loading...</p>';
+
+    try {
+        const { data, error } = await supabase
+            .from('community_mistakes')
+            .select('*')
+            .eq('approved', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+            grid.innerHTML = '<p class="admin-empty">No approved submissions</p>';
+            return;
+        }
+
+        grid.innerHTML = data.map(s => `
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <div>
+                        <div class="admin-card-title">${escapeHtml(s.title)}</div>
+                        <div class="admin-card-meta">${s.category} • ${s.author_name} • ${new Date(s.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+                <div class="admin-card-body">${escapeHtml(s.story)}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading approved:', error);
+        grid.innerHTML = '<p class="admin-empty">Error loading submissions</p>';
+    }
+}
+
+async function loadSubscribers() {
+    const tbody = document.getElementById('subscribersBody');
+    tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+    try {
+        const { data, error } = await supabase
+            .from('email_subscribers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No subscribers yet</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(s => `
+            <tr>
+                <td>${escapeHtml(s.email)}</td>
+                <td>${s.vertical || '-'}</td>
+                <td>${s.stage || '-'}</td>
+                <td>${new Date(s.created_at).toLocaleDateString()}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading subscribers:', error);
+        tbody.innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
+    }
+}
+
+async function approveSubmission(id) {
+    try {
+        const { error } = await supabase
+            .from('community_mistakes')
+            .update({ approved: true })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showToast('Submission approved!');
+        loadPendingSubmissions();
+        // Reload community mistakes on main page
+        const community = await loadCommunityMistakes();
+        state.communityMistakes = community;
+        renderCommunityMistakes();
+    } catch (error) {
+        console.error('Error approving:', error);
+        showToast('Error approving submission');
+    }
+}
+
+async function rejectSubmission(id) {
+    if (!confirm('Are you sure you want to reject this submission? This will delete it.')) return;
+
+    try {
+        const { error } = await supabase
+            .from('community_mistakes')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showToast('Submission rejected');
+        loadPendingSubmissions();
+    } catch (error) {
+        console.error('Error rejecting:', error);
+        showToast('Error rejecting submission');
+    }
+}
+
+// ========================================
+// CONTENT BUILDER TAB
+// ========================================
+
+async function initContentBuilderTab() {
+    if (!state.contentBuilder) {
+        console.warn('Content Builder not initialized');
+        return;
+    }
+
+    // Initialize content builder with existing mistakes
+    await state.contentBuilder.init();
+
+    // Populate existing mistakes dropdown for editing
+    const existingSelect = document.getElementById('existingMistakes');
+    if (existingSelect) {
+        existingSelect.innerHTML = '<option value="">-- Select to edit --</option>';
+        state.mistakesData.forEach(m => {
+            existingSelect.innerHTML += `<option value="${m.id}">${m.title}</option>`;
+        });
+    }
+}
+
+function loadExistingMistake() {
+    const select = document.getElementById('existingMistakes');
+    const mistakeId = select.value;
+
+    if (!mistakeId) {
+        // Clear form for new mistake
+        if (state.contentBuilder) {
+            state.contentBuilder.clearForm();
+        }
+        return;
+    }
+
+    const mistake = state.mistakesData.find(m => m.id === parseInt(mistakeId));
+    if (mistake && state.contentBuilder) {
+        state.contentBuilder.loadMistakeForEdit(mistake);
+    }
+}
+
+async function saveContentBuilderMistake() {
+    if (!state.contentBuilder) {
+        showToast('Content Builder not available');
+        return;
+    }
+
+    try {
+        await state.contentBuilder.saveMistake();
+        showToast('Mistake saved successfully!');
+
+        // Reload data
+        await loadAllData();
+        initMistakesGrid();
+
+        // Update dropdown
+        await initContentBuilderTab();
+    } catch (error) {
+        console.error('Error saving mistake:', error);
+        showToast('Error saving mistake: ' + error.message);
+    }
+}
+
+function previewContentBuilderMistake() {
+    if (state.contentBuilder) {
+        state.contentBuilder.showPreview();
+        openModal('previewModal');
+    }
+}
+
+async function deleteContentBuilderMistake() {
+    const select = document.getElementById('existingMistakes');
+    const mistakeId = select.value;
+
+    if (!mistakeId) {
+        showToast('Please select a mistake to delete');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this mistake? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from('mistakes')
+            .delete()
+            .eq('id', parseInt(mistakeId));
+
+        if (error) throw error;
+
+        showToast('Mistake deleted');
+
+        // Clear form and reload
+        if (state.contentBuilder) {
+            state.contentBuilder.clearForm();
+        }
+        await loadAllData();
+        initMistakesGrid();
+        await initContentBuilderTab();
+    } catch (error) {
+        console.error('Error deleting mistake:', error);
+        showToast('Error deleting mistake');
+    }
+}
+
+// ========================================
+// TAGS TAB
+// ========================================
+
+async function initTagsTab() {
+    if (!state.tagManager) {
+        console.warn('Tag Manager not initialized');
+        return;
+    }
+
+    const container = document.getElementById('tagsOverview');
+    if (!container) return;
+
+    // Group tags by category
+    const tagsByCategory = {};
+    const allTags = state.tagManager.getAllTags();
+
+    allTags.forEach(tag => {
+        const category = tag.category || 'custom';
+        if (!tagsByCategory[category]) {
+            tagsByCategory[category] = [];
+        }
+        tagsByCategory[category].push(tag);
+    });
+
+    // Render tags grouped by category
+    let html = '';
+    for (const [category, tags] of Object.entries(tagsByCategory)) {
+        html += `
+            <div class="tag-category-group">
+                <h4 class="tag-category-title">${formatCategoryName(category)}</h4>
+                <div class="tag-chips">
+                    ${tags.map(tag => `
+                        <span class="tag-chip ${tag.is_predefined ? '' : 'custom-tag'}">
+                            ${tag.icon || '🏷️'} ${tag.display_name}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Add custom tag creation form
+    html += `
+        <div class="create-custom-tag">
+            <h4>Create Custom Tag</h4>
+            <div class="custom-tag-form">
+                <input type="text" id="customTagName" placeholder="Tag name" class="input-field">
+                <select id="customTagCategory" class="input-field">
+                    <option value="custom">Custom</option>
+                    <option value="business_model">Business Model</option>
+                    <option value="vertical">Vertical</option>
+                    <option value="concern_area">Concern Area</option>
+                    <option value="special">Special</option>
+                </select>
+                <input type="text" id="customTagIcon" placeholder="Emoji icon" class="input-field" maxlength="4">
+                <button class="btn-primary" onclick="createCustomTag()">Add Tag</button>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function formatCategoryName(category) {
+    return category
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+async function createCustomTag() {
+    if (!state.tagManager) {
+        showToast('Tag Manager not available');
+        return;
+    }
+
+    const name = document.getElementById('customTagName').value.trim();
+    const category = document.getElementById('customTagCategory').value;
+    const icon = document.getElementById('customTagIcon').value.trim() || '🏷️';
+
+    if (!name) {
+        showToast('Please enter a tag name');
+        return;
+    }
+
+    try {
+        await state.tagManager.createCustomTag(name, category, icon);
+        showToast('Custom tag created!');
+
+        // Clear form and refresh
+        document.getElementById('customTagName').value = '';
+        document.getElementById('customTagIcon').value = '';
+        await initTagsTab();
+    } catch (error) {
+        console.error('Error creating tag:', error);
+        showToast('Error creating tag: ' + error.message);
+    }
+}
+
+// ========================================
+// DEFENSE WARNING MODAL
+// ========================================
+
+function showDefenseWarningModal() {
+    openModal('defenseWarningModal');
+}
+
+function closeDefenseWarningModal() {
+    document.getElementById('defenseWarningModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ========================================
+// TESTIMONIAL MODAL
+// ========================================
+
+function openTestimonialModal() {
+    openModal('testimonialModal');
+}
+
+function closeTestimonialModal() {
+    document.getElementById('testimonialModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+async function saveNewTestimonial() {
+    const quote = document.getElementById('testimonialQuote').value.trim();
+    const authorName = document.getElementById('testimonialAuthorName').value.trim();
+    const authorRole = document.getElementById('testimonialAuthorRole').value.trim();
+    const authorCompany = document.getElementById('testimonialAuthorCompany').value.trim();
+
+    if (!quote || !authorName) {
+        showToast('Please fill in quote and author name');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('testimonial_quotes')
+            .insert({
+                quote: quote,
+                author_name: authorName,
+                author_role: authorRole || null,
+                author_company: authorCompany || null
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        showToast('Testimonial saved!');
+        closeTestimonialModal();
+
+        // Clear form
+        document.getElementById('testimonialQuote').value = '';
+        document.getElementById('testimonialAuthorName').value = '';
+        document.getElementById('testimonialAuthorRole').value = '';
+        document.getElementById('testimonialAuthorCompany').value = '';
+
+        // Refresh content builder testimonial list if it exists
+        if (state.contentBuilder) {
+            await state.contentBuilder.loadTestimonials();
+        }
+    } catch (error) {
+        console.error('Error saving testimonial:', error);
+        showToast('Error saving testimonial');
+    }
+}
+
+// ========================================
+// PREVIEW MODAL
+// ========================================
+
+function closePreviewModal() {
+    document.getElementById('previewModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ========================================
+// POINT/RESOURCE DYNAMIC INPUTS
+// ========================================
+
+function addPointInput() {
+    const container = document.getElementById('pointsInputs');
+    const newInput = document.createElement('div');
+    newInput.className = 'point-input-group';
+    newInput.innerHTML = `
+        <input type="text" class="point-input input-field" placeholder="Key point...">
+        <button type="button" class="btn-icon" onclick="removePointInput(this)">×</button>
+    `;
+    container.appendChild(newInput);
+}
+
+function removePointInput(btn) {
+    const group = btn.closest('.point-input-group');
+    if (document.querySelectorAll('.point-input-group').length > 1) {
+        group.remove();
+    } else {
+        showToast('Must have at least one point');
+    }
+}
+
+function addResourceInput() {
+    const container = document.getElementById('resourcesInputs');
+    const newInput = document.createElement('div');
+    newInput.className = 'resource-input-group';
+    newInput.innerHTML = `
+        <input type="text" class="resource-title input-field" placeholder="Resource title...">
+        <input type="url" class="resource-url input-field" placeholder="https://...">
+        <select class="resource-type input-field">
+            <option value="article">Article</option>
+            <option value="video">Video</option>
+            <option value="tool">Tool</option>
+            <option value="template">Template</option>
+        </select>
+        <button type="button" class="btn-icon" onclick="removeResourceInput(this)">×</button>
+    `;
+    container.appendChild(newInput);
+}
+
+function removeResourceInput(btn) {
+    btn.closest('.resource-input-group').remove();
 }
