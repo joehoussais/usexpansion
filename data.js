@@ -416,6 +416,34 @@ const mistakesData = [
             remediation: "Evaluate where your primary revenue will come from before restructuring. If selling to European governments is significant, maintain European HQ status. Consult with defense industry legal counsel before any corporate restructuring. Consider establishing a US subsidiary rather than moving HQ if US presence is needed.",
             resource: "https://www.bis.doc.gov/index.php/policy-guidance/lists-of-parties-of-concern"
         }
+    },
+    {
+        id: 14,
+        title: "Know When to Say No to Best Practices",
+        icon: "&#x1F6AB;",
+        category: "Strategy",
+        cost: "Missed opportunities worth millions",
+        preview: "Following rigid best practices can cost you everything. Sometimes your instinct knows better than the playbook.",
+        relevance: {
+            verticals: ["b2b-saas", "fintech", "consumer", "deeptech", "marketplace", "other"],
+            stages: ["series-a", "series-b", "growth"],
+            journeys: ["scaling", "established"],
+            worries: ["strategy", "operations"]
+        },
+        tags: ['b2b', 'saas', 'fintech', 'deeptech', 'marketplace', 'series-a', 'series-b', 'series-c-plus', 'growth', 'scaling', 'established', 'gtm', 'operations', 'fundraising'],
+        tagWeights: { 'growth': 5, 'series-b': 4, 'series-c-plus': 5, 'scaling': 4, 'established': 4, 'gtm': 3 },
+        content: {
+            problem: "Blindly following best practices when your instincts tell you otherwise",
+            points: [
+                "<strong>Best practices are averages</strong> - they work for most situations, but your situation might be the exception",
+                "Advisors and experts default to conventional wisdom because it's safe advice. <strong>They won't share your downside if they're wrong</strong>",
+                "Time-sensitive opportunities require speed, not process. When there's a rare window, bureaucratic best practices can slam it shut",
+                "A founder considering an exit was told by everyone to hire an investment banker. The process added months to the timeline while he knew time was of the essence. <strong>The window closed.</strong>",
+                "As one seasoned entrepreneur put it: <em>'Un bon deal de M&A quand ça meant to be, ça se fait de manière assez rapide. Quand ça traîne, c'est que c'est pas bon.'</em> (A good M&A deal, when it's meant to be, happens quickly. When it drags, it's not good.)",
+                "Your pattern recognition as a founder is an asset. You've seen your market, your customers, your timing. <strong>Experts haven't.</strong>"
+            ],
+            remediation: "Trust your instincts when they conflict with best practices - especially when timing matters. Ask yourself: 'What do I know about this situation that the advisor doesn't?' When you feel urgency, act on it. Best practices are guidelines, not commandments. The founders who win big often do so by knowing exactly when to throw out the playbook."
+        }
     }
 ];
 
