@@ -115,133 +115,15 @@
                         <span class="progress-text" id="progressText">Question 1 of 4</span>
                     </div>
 
-                    <!-- Quiz Questions -->
-            <div class="quiz-question active" id="q1">
-                <div class="question-icon">&#x1F3E2;</div>
-                <h3 class="question-title">What's your company vertical?</h3>
-                <div class="options-grid">
-                    <button class="option-btn" data-question="vertical" data-value="b2b-saas">
-                        <span class="option-icon">&#x1F4BB;</span>
-                        <span class="option-label">B2B SaaS</span>
-                    </button>
-                    <button class="option-btn" data-question="vertical" data-value="fintech">
-                        <span class="option-icon">&#x1F4B3;</span>
-                        <span class="option-label">Fintech</span>
-                    </button>
-                    <button class="option-btn" data-question="vertical" data-value="consumer">
-                        <span class="option-icon">&#x1F6D2;</span>
-                        <span class="option-label">Consumer</span>
-                    </button>
-                    <button class="option-btn" data-question="vertical" data-value="deeptech">
-                        <span class="option-icon">&#x1F9EC;</span>
-                        <span class="option-label">Deep Tech / AI</span>
-                    </button>
-                    <button class="option-btn" data-question="vertical" data-value="marketplace">
-                        <span class="option-icon">&#x1F3EA;</span>
-                        <span class="option-label">Marketplace</span>
-                    </button>
-                    <button class="option-btn" data-question="vertical" data-value="other">
-                        <span class="option-icon">&#x2728;</span>
-                        <span class="option-label">Other</span>
-                    </button>
-                </div>
-            </div>
+                    <!-- Quiz Questions - Dynamically Rendered -->
+                    <div id="quizQuestionsContainer">
+                        <!-- Questions are rendered dynamically by quiz-engine.js -->
+                    </div>
 
-            <div class="quiz-question" id="q2">
-                <button class="prev-btn" onclick="previousQuestion()">&#x2190; Previous</button>
-                <div class="question-icon">&#x1F4C8;</div>
-                <h3 class="question-title">What's your funding stage?</h3>
-                <div class="options-grid">
-                    <button class="option-btn" data-question="stage" data-value="seed">
-                        <span class="option-icon">&#x1F331;</span>
-                        <span class="option-label">Seed</span>
-                    </button>
-                    <button class="option-btn" data-question="stage" data-value="series-a">
-                        <span class="option-icon">&#x1F680;</span>
-                        <span class="option-label">Series A</span>
-                    </button>
-                    <button class="option-btn" data-question="stage" data-value="series-b">
-                        <span class="option-icon">&#x1F31F;</span>
-                        <span class="option-label">Series B+</span>
-                    </button>
-                    <button class="option-btn" data-question="stage" data-value="growth">
-                        <span class="option-icon">&#x1F451;</span>
-                        <span class="option-label">Growth / Late</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="quiz-question" id="q3">
-                <button class="prev-btn" onclick="previousQuestion()">&#x2190; Previous</button>
-                <div class="question-icon">&#x1F5FA;</div>
-                <h3 class="question-title">Where are you in your US journey?</h3>
-                <div class="options-grid options-vertical">
-                    <button class="option-btn wide" data-question="journey" data-value="exploring">
-                        <span class="option-icon">&#x1F50D;</span>
-                        <span class="option-text">
-                            <span class="option-label">Exploring</span>
-                            <span class="option-desc">Researching the market, no US presence yet</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="journey" data-value="early">
-                        <span class="option-icon">&#x1F6EB;</span>
-                        <span class="option-text">
-                            <span class="option-label">Early Entry</span>
-                            <span class="option-desc">First US hire or just opened US entity</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="journey" data-value="scaling">
-                        <span class="option-icon">&#x1F4CA;</span>
-                        <span class="option-text">
-                            <span class="option-label">Scaling</span>
-                            <span class="option-desc">5-20 US employees, growing revenue</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="journey" data-value="established">
-                        <span class="option-icon">&#x1F3C6;</span>
-                        <span class="option-text">
-                            <span class="option-label">Established</span>
-                            <span class="option-desc">Significant US team, US is major market</span>
-                        </span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="quiz-question" id="q4">
-                <button class="prev-btn" onclick="previousQuestion()">&#x2190; Previous</button>
-                <div class="question-icon">&#x26A0;</div>
-                <h3 class="question-title">What's your biggest worry about US expansion?</h3>
-                <div class="options-grid options-vertical">
-                    <button class="option-btn wide" data-question="worry" data-value="recruiting">
-                        <span class="option-icon">&#x1F465;</span>
-                        <span class="option-text">
-                            <span class="option-label">Hiring the Right People</span>
-                            <span class="option-desc">Finding talent, avoiding bad hires</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="worry" data-value="product">
-                        <span class="option-icon">&#x1F3AF;</span>
-                        <span class="option-text">
-                            <span class="option-label">Product-Market Fit</span>
-                            <span class="option-desc">Will our product work in the US?</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="worry" data-value="strategy">
-                        <span class="option-icon">&#x1F9ED;</span>
-                        <span class="option-text">
-                            <span class="option-label">Go-to-Market Strategy</span>
-                            <span class="option-desc">How to enter, where to start</span>
-                        </span>
-                    </button>
-                    <button class="option-btn wide" data-question="worry" data-value="operations">
-                        <span class="option-icon">&#x2699;</span>
-                        <span class="option-text">
-                            <span class="option-label">Operations & Legal</span>
-                            <span class="option-desc">Entity setup, regulations, compliance</span>
-                        </span>
-                    </button>
-                </div>
-            </div>
+                    <!-- Multi-select Continue Button (shown for multi-select questions) -->
+                    <div id="multiSelectContinue" class="multi-select-continue hidden">
+                        <button class="btn btn-primary" onclick="confirmMultiSelect()">Continue →</button>
+                    </div>
                 </div>
 
                 <!-- Right side: Adventure Map -->
@@ -259,12 +141,12 @@
                             <div class="character-shadow"></div>
                         </div>
 
-                        <!-- Progress Labels -->
-                        <div class="journey-labels">
-                            <span class="journey-label" data-step="1">Vertical</span>
-                            <span class="journey-label" data-step="2">Stage</span>
-                            <span class="journey-label" data-step="3">Journey</span>
-                            <span class="journey-label" data-step="4">Focus</span>
+                        <!-- Progress Labels (updated dynamically) -->
+                        <div class="journey-labels" id="journeyLabels">
+                            <span class="journey-label" data-step="1">Start</span>
+                            <span class="journey-label" data-step="2">Profile</span>
+                            <span class="journey-label" data-step="3">Concerns</span>
+                            <span class="journey-label" data-step="4">Finish</span>
                         </div>
                     </div>
                 </div>

@@ -3187,6 +3187,61 @@ section {
     transform: translateY(-2px);
 }
 
+/* Multi-select continue button container */
+.multi-select-continue {
+    text-align: center;
+    margin-top: var(--space-lg);
+    padding: var(--space-md);
+}
+
+.multi-select-continue.hidden {
+    display: none;
+}
+
+/* Checkbox indicator for multi-select options */
+.checkbox-indicator {
+    position: absolute;
+    right: var(--space-md);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-500);
+    border-radius: 4px;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.option-btn.selected .checkbox-indicator {
+    background: var(--teal-light);
+    border-color: var(--teal-light);
+}
+
+.option-btn.selected .checkbox-indicator::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--primary-dark);
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+/* Make option buttons position relative for checkbox indicator */
+.options-grid.multi-select .option-btn {
+    position: relative;
+    padding-right: 50px;
+}
+
+/* Question subtitle */
+.question-subtitle {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    margin-top: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
 /* No testimonials message */
 .no-testimonials {
     color: var(--gray-500);

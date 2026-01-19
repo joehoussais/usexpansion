@@ -324,12 +324,228 @@ function useFallbackData() {
 // ========================================
 
 function initQuiz() {
-    document.querySelectorAll('.option-btn').forEach(btn => {
-        btn.addEventListener('click', handleOptionClick);
-    });
+    // If QuizEngine is available, render dynamic quiz
+    if (state.quizEngine) {
+        renderCurrentQuestion();
+    } else {
+        // Fallback: attach click handlers to static HTML (if present)
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.addEventListener('click', handleOptionClick);
+        });
+    }
 
     // Initialize adventure character at starting position
     initAdventureCharacter();
+}
+
+// Render the current question from QuizEngine
+function renderCurrentQuestion() {
+    const container = document.getElementById('quizQuestionsContainer');
+    if (!container || !state.quizEngine) return;
+
+    const question = state.quizEngine.getCurrentQuestion();
+    if (!question) return;
+
+    // Update state for compatibility with existing code
+    state.currentQuestion = question.currentIndex + 1;
+    state.totalQuestions = question.totalQuestions;
+
+    // Build question HTML
+    let html = `
+        <div class="quiz-question active" id="q${question.currentIndex + 1}">
+            ${!question.isFirst ? '<button class="prev-btn" onclick="previousQuestion()">&#x2190; Previous</button>' : ''}
+            <div class="question-icon">${question.question_icon || '&#x2753;'}</div>
+            <h3 class="question-title">${question.question_text}</h3>
+            ${question.question_subtitle ? `<p class="question-subtitle">${question.question_subtitle}</p>` : ''}
+            <div class="options-grid ${question.is_multi_select ? 'multi-select' : ''} ${question.options.length > 4 ? 'options-vertical' : ''}">
+    `;
+
+    // Render options
+    question.options.forEach(option => {
+        const isSelected = question.is_multi_select
+            ? state.quizEngine.getSelectedOptions(question.question_key).includes(option.option_key)
+            : state.quizEngine.state.answers[question.question_key] === option.option_key;
+
+        const hasDescription = option.option_description && option.option_description.length > 0;
+        const wideClass = hasDescription ? 'wide' : '';
+
+        html += `
+            <button class="option-btn ${wideClass} ${isSelected ? 'selected' : ''}"
+                    data-question="${question.question_key}"
+                    data-value="${option.option_key}"
+                    onclick="handleDynamicOptionClick(this)">
+                <span class="option-icon">${option.option_icon || '&#x2022;'}</span>
+                ${hasDescription ? `
+                    <span class="option-text">
+                        <span class="option-label">${option.option_label}</span>
+                        <span class="option-desc">${option.option_description}</span>
+                    </span>
+                ` : `
+                    <span class="option-label">${option.option_label}</span>
+                `}
+                ${question.is_multi_select ? '<span class="checkbox-indicator"></span>' : ''}
+            </button>
+        `;
+    });
+
+    html += `
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Show/hide multi-select continue button
+    const continueBtn = document.getElementById('multiSelectContinue');
+    if (continueBtn) {
+        if (question.is_multi_select) {
+            continueBtn.classList.remove('hidden');
+        } else {
+            continueBtn.classList.add('hidden');
+        }
+    }
+
+    // Update progress
+    updateProgress();
+}
+
+// Handle option click for dynamic quiz
+function handleDynamicOptionClick(btn) {
+    const questionKey = btn.dataset.question;
+    const value = btn.dataset.value;
+    const question = state.quizEngine.getQuestion(questionKey);
+
+    if (question.is_multi_select) {
+        // Toggle selection for multi-select
+        btn.classList.toggle('selected');
+        state.quizEngine.answer(questionKey, value);
+    } else {
+        // Single select - record answer and advance
+        const container = btn.closest('.quiz-question');
+        container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        state.quizEngine.answer(questionKey, value);
+
+        // Visual feedback
+        btn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            btn.style.transform = '';
+        }, 100);
+
+        // Auto-advance after short delay
+        setTimeout(() => {
+            advanceQuiz();
+        }, 300);
+    }
+}
+
+// Confirm multi-select and advance
+function confirmMultiSelect() {
+    const currentQuestion = state.quizEngine.getCurrentQuestion();
+    if (currentQuestion && state.quizEngine.isAnswered(currentQuestion.question_key)) {
+        advanceQuiz();
+    }
+}
+
+// Advance to next question or show results
+function advanceQuiz() {
+    const hasNext = state.quizEngine.next();
+
+    if (hasNext) {
+        // Move character
+        moveCharacterToStep(state.quizEngine.state.currentQuestionIndex + 1);
+        // Render new question
+        renderCurrentQuestion();
+    } else {
+        // Quiz complete
+        const profile = state.quizEngine.complete();
+        showDynamicResults(profile);
+    }
+}
+
+// Show results from dynamic quiz
+function showDynamicResults(profile) {
+    // Move character to final destination
+    moveCharacterToStep(state.totalQuestions);
+
+    setTimeout(() => {
+        document.getElementById('quizContainer').classList.add('hidden');
+
+        // Store profile in state
+        state.userProfile = profile;
+
+        // Render the profile card
+        renderProfile(profile);
+
+        // Get relevant mistakes using tag matching
+        const topMistakes = getRelevantMistakesFromTags(profile);
+        renderTopMistakes(topMistakes);
+
+        // Show results
+        document.getElementById('resultsContainer').classList.remove('hidden');
+        updateShareSection();
+        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+
+        // Show defense warning modal if applicable
+        if (profile.hasDefenseHqWarning) {
+            setTimeout(() => {
+                showDefenseWarningModal();
+            }, 500);
+        }
+    }, 1000);
+}
+
+// Get relevant mistakes based on profile tags
+function getRelevantMistakesFromTags(profile) {
+    const mistakes = state.mistakesData;
+    if (!mistakes || mistakes.length === 0) return [];
+
+    const userTags = profile.tags || [];
+    const specialConsiderations = profile.specialConsiderations || [];
+
+    // Score each mistake
+    const scored = mistakes.map(mistake => {
+        let score = 0;
+        const mistakeTags = mistake.tags || [];
+
+        // Match regular tags
+        mistakeTags.forEach(tag => {
+            if (userTags.includes(tag)) {
+                score += 2;
+            }
+        });
+
+        // Bonus for concern matches (higher weight)
+        const concernTags = userTags.filter(t => ['hiring', 'pmf', 'gtm', 'legal', 'fundraising', 'operations'].includes(t));
+        concernTags.forEach(concern => {
+            if (mistakeTags.includes(concern)) {
+                score += 4;
+            }
+        });
+
+        // Special consideration priority boost
+        if (mistake.specialConsiderations) {
+            mistake.specialConsiderations.forEach(sc => {
+                if (specialConsiderations.includes(sc)) {
+                    score += 6;
+                }
+            });
+        }
+
+        // Check for defense-hq-timing special tag
+        if (specialConsiderations.includes('defense-hq-timing') && mistakeTags.includes('defense-hq-timing')) {
+            score += 10; // High priority
+        }
+
+        return { ...mistake, score };
+    });
+
+    // Sort by score and return top 3
+    return scored
+        .filter(m => m.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
 }
 
 // ========================================
@@ -473,7 +689,14 @@ function goToQuestion(num) {
 }
 
 function previousQuestion() {
-    if (state.currentQuestion > 1) {
+    // Use dynamic quiz engine if available
+    if (state.quizEngine) {
+        const hasPrev = state.quizEngine.previous();
+        if (hasPrev) {
+            moveCharacterToStep(state.quizEngine.state.currentQuestionIndex);
+            renderCurrentQuestion();
+        }
+    } else if (state.currentQuestion > 1) {
         goToQuestion(state.currentQuestion - 1);
     }
 }
