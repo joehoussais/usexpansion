@@ -951,6 +951,15 @@ function renderMistakeDetail(mistake) {
         ? mistake.content.points
         : JSON.parse(mistake.content.points || '[]');
 
+    // Get testimonials for this mistake
+    const testimonials = mistake.content.testimonials || [];
+
+    // Get sources for this mistake
+    const sources = mistake.sources || [];
+
+    // Get tags for display
+    const tags = mistake.tags || [];
+
     const html = `
         <div class="mistake-detail-header">
             <span class="mistake-detail-icon">${mistake.icon}</span>
@@ -962,20 +971,277 @@ function renderMistakeDetail(mistake) {
         </div>
         <div class="mistake-detail-body">
             <h3>&#x26A0; The Problem: ${mistake.content.problem}</h3>
-            <ul>
+            <ul class="mistake-points">
                 ${pointsArray.map(point => `<li>${point}</li>`).join('')}
             </ul>
 
             <h3>&#x2705; How to Avoid It</h3>
-            <p>${mistake.content.remediation}</p>
+            <p class="mistake-remediation">${mistake.content.remediation}</p>
 
-            ${mistake.content.resource ? `
+            ${testimonials.length > 0 ? `
+                <h3>&#x1F4AC; What Founders Say</h3>
+                <div class="mistake-testimonials">
+                    ${testimonials.map(t => `
+                        <blockquote class="mistake-testimonial">
+                            <p>"${t.quote}"</p>
+                            <cite>— ${t.author}${t.role ? `, ${t.role}` : ''}</cite>
+                        </blockquote>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            ${sources.length > 0 ? `
+                <h3>&#x1F4DA; Sources & Further Reading</h3>
+                <div class="mistake-sources">
+                    ${sources.map(s => `
+                        <div class="source-item">
+                            <span class="source-type">${getSourceTypeIcon(s.type)}</span>
+                            <div class="source-info">
+                                ${s.url ? `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="source-title">${s.title}</a>` : `<span class="source-title">${s.title}</span>`}
+                                ${s.author ? `<span class="source-author">by ${s.author}${s.authorRole ? ` (${s.authorRole})` : ''}</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : mistake.content.resource ? `
                 <h3>&#x1F4DA; Resources</h3>
                 <p><a href="${mistake.content.resource}" target="_blank" style="color: var(--teal-light);">${mistake.content.resource}</a></p>
             ` : ''}
+
+            ${tags.length > 0 ? `
+                <div class="mistake-tags">
+                    ${tags.slice(0, 6).map(tag => `
+                        <span class="mistake-tag">${getTagIcon(tag)} ${formatTagName(tag)}</span>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            <div class="mistake-comments-section">
+                <h3>&#x1F4AC; Discussion</h3>
+                <div id="commentsContainer-${mistake.id}" class="comments-container">
+                    <div class="comments-loading">Loading comments...</div>
+                </div>
+                <div class="comment-form-container">
+                    <form class="comment-form" onsubmit="handleCommentSubmit(event, ${mistake.id})">
+                        <textarea id="commentInput-${mistake.id}" class="comment-input" placeholder="Share your experience or ask a question..." rows="3" maxlength="1000"></textarea>
+                        <div class="comment-form-footer">
+                            <span class="comment-char-count"><span id="commentCharCount-${mistake.id}">0</span>/1000</span>
+                            <button type="submit" class="btn-comment-submit">Post Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     `;
     document.getElementById('mistakeDetail').innerHTML = html;
+
+    // Add character counter for comment
+    const commentInput = document.getElementById(`commentInput-${mistake.id}`);
+    if (commentInput) {
+        commentInput.addEventListener('input', function() {
+            document.getElementById(`commentCharCount-${mistake.id}`).textContent = this.value.length;
+        });
+    }
+
+    // Load comments for this mistake
+    loadCommentsForMistake(mistake.id);
+}
+
+// Helper function for source type icons
+function getSourceTypeIcon(type) {
+    const icons = {
+        'article': '&#x1F4F0;',
+        'interview': '&#x1F399;',
+        'research': '&#x1F4CA;',
+        'book': '&#x1F4D6;',
+        'video': '&#x1F3AC;',
+        'podcast': '&#x1F3A7;',
+        'legal guide': '&#x2696;',
+        'case study': '&#x1F4BC;',
+        'guide': '&#x1F4D1;'
+    };
+    return icons[type] || '&#x1F517;';
+}
+
+// Helper function for tag icons
+function getTagIcon(tag) {
+    const tagData = predefinedTags[tag];
+    return tagData?.icon || '&#x1F3F7;';
+}
+
+// Helper function to format tag names
+function formatTagName(tag) {
+    const tagData = predefinedTags[tag];
+    if (tagData) return tagData.display_name;
+    return tag.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// Load comments for a mistake
+async function loadCommentsForMistake(mistakeId) {
+    const container = document.getElementById(`commentsContainer-${mistakeId}`);
+    if (!container) return;
+
+    try {
+        // Try to load from Supabase
+        const { data, error } = await supabase
+            .from('mistake_comments')
+            .select('*')
+            .eq('mistake_id', mistakeId)
+            .eq('is_approved', true)
+            .eq('is_deleted', false)
+            .is('parent_id', null)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div class="comments-empty">
+                    <p>No comments yet. Be the first to share your experience!</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = data.map(comment => renderComment(comment)).join('');
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        container.innerHTML = `
+            <div class="comments-empty">
+                <p>Comments are not available right now.</p>
+            </div>
+        `;
+    }
+}
+
+// Render a single comment
+function renderComment(comment) {
+    const timeAgo = getTimeAgo(new Date(comment.created_at));
+    return `
+        <div class="comment" data-id="${comment.id}">
+            <div class="comment-header">
+                <div class="comment-avatar">${comment.author_avatar || '&#x1F464;'}</div>
+                <div class="comment-meta">
+                    <span class="comment-author">${escapeHtml(comment.author_name)}</span>
+                    ${comment.author_company ? `<span class="comment-company">${escapeHtml(comment.author_company)}</span>` : ''}
+                    <span class="comment-time">${timeAgo}</span>
+                </div>
+            </div>
+            <div class="comment-body">
+                <p>${escapeHtml(comment.content)}</p>
+            </div>
+            <div class="comment-actions">
+                <button class="comment-action" onclick="handleUpvote(${comment.id})">
+                    &#x1F44D; <span class="upvote-count">${comment.upvotes || 0}</span>
+                </button>
+                <button class="comment-action" onclick="showReplyForm(${comment.id})">
+                    &#x21A9; Reply
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Get time ago string
+function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    const intervals = [
+        { label: 'year', seconds: 31536000 },
+        { label: 'month', seconds: 2592000 },
+        { label: 'week', seconds: 604800 },
+        { label: 'day', seconds: 86400 },
+        { label: 'hour', seconds: 3600 },
+        { label: 'minute', seconds: 60 }
+    ];
+
+    for (const interval of intervals) {
+        const count = Math.floor(seconds / interval.seconds);
+        if (count >= 1) {
+            return `${count} ${interval.label}${count !== 1 ? 's' : ''} ago`;
+        }
+    }
+    return 'just now';
+}
+
+// Handle comment submission
+async function handleCommentSubmit(e, mistakeId) {
+    e.preventDefault();
+
+    const input = document.getElementById(`commentInput-${mistakeId}`);
+    const content = input.value.trim();
+
+    if (!content) {
+        showToast('Please enter a comment');
+        return;
+    }
+
+    // Get author info
+    let authorName = 'Anonymous';
+    let authorAvatar = '&#x1F464;';
+    let authorCompany = null;
+
+    if (state.user) {
+        authorName = state.user.user_metadata?.name || state.user.email.split('@')[0];
+    } else if (state.userProfile) {
+        authorName = state.userProfile.name;
+        authorAvatar = state.userProfile.avatar;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('mistake_comments')
+            .insert({
+                mistake_id: mistakeId,
+                content: content,
+                author_name: authorName,
+                author_avatar: authorAvatar,
+                author_company: authorCompany,
+                user_id: state.user?.id || null,
+                is_approved: false // Requires moderation
+            });
+
+        if (error) throw error;
+
+        input.value = '';
+        document.getElementById(`commentCharCount-${mistakeId}`).textContent = '0';
+        showToast('Comment submitted! It will appear after moderation.');
+    } catch (error) {
+        console.error('Error submitting comment:', error);
+        showToast('Error submitting comment. Please try again.');
+    }
+}
+
+// Handle upvote
+async function handleUpvote(commentId) {
+    if (!state.user) {
+        showToast('Please sign in to upvote');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .rpc('toggle_comment_upvote', {
+                p_comment_id: commentId,
+                p_user_id: state.user.id
+            });
+
+        if (error) throw error;
+
+        // Update UI
+        const countEl = document.querySelector(`[data-id="${commentId}"] .upvote-count`);
+        if (countEl) {
+            const current = parseInt(countEl.textContent) || 0;
+            countEl.textContent = data ? current + 1 : current - 1;
+        }
+    } catch (error) {
+        console.error('Error upvoting:', error);
+    }
+}
+
+// Show reply form
+function showReplyForm(parentId) {
+    showToast('Reply feature coming soon!');
 }
 
 function showAllMistakes() {
