@@ -482,10 +482,40 @@ function showDynamicResults(profile) {
         const topMistakes = getRelevantMistakesFromTags(profile);
         renderTopMistakes(topMistakes);
 
+        // Update profile summary text for didactic messaging
+        const profileSummaryEl = document.getElementById('profileSummary');
+        if (profileSummaryEl) {
+            const summaryParts = [];
+            if (profile.attributes && profile.attributes.length > 0) {
+                profile.attributes.forEach(attr => {
+                    if (attr.label && attr.label !== 'Unknown') {
+                        summaryParts.push(attr.label);
+                    }
+                });
+            }
+            const summaryText = summaryParts.length > 0
+                ? `${profile.name} (${summaryParts.join(', ')})`
+                : profile.name;
+            profileSummaryEl.textContent = summaryText;
+        }
+
         // Show results
-        document.getElementById('resultsContainer').classList.remove('hidden');
+        const resultsContainer = document.getElementById('resultsContainer');
+        resultsContainer.classList.remove('hidden');
         updateShareSection();
-        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+
+        // Scroll to center results on screen
+        setTimeout(() => {
+            const rect = resultsContainer.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const elementTop = rect.top + window.pageYOffset;
+            const offset = Math.max(0, elementTop - (viewportHeight * 0.1)); // Show at top 10% of viewport
+
+            window.scrollTo({
+                top: offset,
+                behavior: 'smooth'
+            });
+        }, 100);
 
         // Show defense warning modal if applicable
         if (profile.hasDefenseHqWarning) {
@@ -723,9 +753,39 @@ function showResults() {
         renderProfile(profile);
         renderTopMistakes(topMistakes);
 
-        document.getElementById('resultsContainer').classList.remove('hidden');
+        // Update profile summary text for didactic messaging
+        const profileSummaryEl = document.getElementById('profileSummary');
+        if (profileSummaryEl) {
+            const summaryParts = [];
+            if (profile.attributes && profile.attributes.length > 0) {
+                profile.attributes.forEach(attr => {
+                    if (attr.label && attr.label !== 'Unknown') {
+                        summaryParts.push(attr.label);
+                    }
+                });
+            }
+            const summaryText = summaryParts.length > 0
+                ? `${profile.name} (${summaryParts.join(', ')})`
+                : profile.name;
+            profileSummaryEl.textContent = summaryText;
+        }
+
+        const resultsContainer = document.getElementById('resultsContainer');
+        resultsContainer.classList.remove('hidden');
         updateShareSection();
-        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+
+        // Scroll to center results on screen
+        setTimeout(() => {
+            const rect = resultsContainer.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const elementTop = rect.top + window.pageYOffset;
+            const offset = Math.max(0, elementTop - (viewportHeight * 0.1));
+
+            window.scrollTo({
+                top: offset,
+                behavior: 'smooth'
+            });
+        }, 100);
     }, 1000);
 }
 
