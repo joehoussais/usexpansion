@@ -1317,51 +1317,11 @@ const testimonialsData = [
     },
     {
         id: 3,
-        type: "quote",
-        content: "The US is very much about ultra specialisation. You have an org chart and a very defined role and that's your job. In Europe you tend to have people that are jack of all trades that operate outside of their lane.",
-        author: "Renaud Deraison",
-        role: "Ex-CTO, Tenable",
-        avatar: "&#x1F468;&#x200D;&#x1F4BB;"
-    },
-    {
-        id: 4,
-        type: "quote",
-        content: "They tend to just see the US as a sales office and don't go there to win. If you really want to win here you have to bet the farm.",
-        author: "Renaud Deraison",
-        role: "Ex-CTO, Tenable",
-        avatar: "&#x1F680;"
-    },
-    {
-        id: 5,
-        type: "quote",
-        content: "Before I went over, I talked to a lot of people about what to do and what not to do, and they all said: 'You're going to make hiring mistakes if you don't do XYZ'. I ended up making exactly those hiring mistakes.",
-        author: "Thomas Holl",
-        role: "Co-founder & Managing Director, Babbel",
-        avatar: "&#x1F4A1;"
-    },
-    {
-        id: 6,
-        type: "quote",
-        content: "The most important thing for founders thinking of expanding to the US is to speak to people who have already done it. They have stories on what to do, what not to do, what mistakes were made.",
-        author: "Paul Strachman",
-        role: "ISAI",
-        avatar: "&#x1F91D;"
-    },
-    {
-        id: 7,
-        type: "quote",
-        content: "Learn from the one mistake that founders (including us) make when coming to the US: Don't underestimate it.",
-        author: "Richard Valtr",
-        role: "Founder, Mews",
-        avatar: "&#x1F3AF;"
-    },
-    {
-        id: 8,
-        type: "quote",
-        content: "What I learned over there is anybody can sue anybody for anything... and if you go in front of a court, the typical lawsuit is six figures. That can tank a lot of companies in their early stages.",
-        author: "Thomas Holl",
-        role: "Co-founder & Managing Director, Babbel",
-        avatar: "&#x2696;"
+        type: "placeholder",
+        content: "Tons of founder stories coming soon from Alfred, Antoine, and many more who've been through the US expansion journey. Stay tuned.",
+        author: "Coming Soon",
+        role: "",
+        avatar: "&#x1F6A7;"
     }
 ];
 
