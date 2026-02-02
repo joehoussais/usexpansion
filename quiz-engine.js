@@ -23,62 +23,11 @@ class QuizEngine {
         this.onTagAssigned = config.onTagAssigned || (() => {});
     }
 
-    // Initialize from Supabase data or fallback
-    async init(supabaseClient) {
-        try {
-            if (supabaseClient) {
-                await this.loadFromSupabase(supabaseClient);
-            } else {
-                this.loadFallbackData();
-            }
-            this.buildQuestionPath();
-            return true;
-        } catch (error) {
-            console.warn('Quiz engine init error, using fallback:', error);
-            this.loadFallbackData();
-            this.buildQuestionPath();
-            return true;
-        }
-    }
-
-    // Load quiz config from Supabase
-    async loadFromSupabase(supabase) {
-        // Load questions
-        const { data: questions, error: qError } = await supabase
-            .from('quiz_questions')
-            .select('*')
-            .eq('is_active', true)
-            .order('display_order');
-
-        if (qError) throw qError;
-        this.questions = questions;
-
-        // Load options for each question
-        const { data: options, error: oError } = await supabase
-            .from('quiz_options')
-            .select('*')
-            .eq('is_active', true)
-            .order('display_order');
-
-        if (oError) throw oError;
-
-        // Group options by question
-        this.options = {};
-        options.forEach(opt => {
-            if (!this.options[opt.question_id]) {
-                this.options[opt.question_id] = [];
-            }
-            this.options[opt.question_id].push(opt);
-        });
-
-        // Load conditions
-        const { data: conditions, error: cError } = await supabase
-            .from('quiz_conditions')
-            .select('*')
-            .eq('is_active', true);
-
-        if (cError) throw cError;
-        this.conditions = conditions;
+    // Initialize quiz engine
+    init() {
+        this.loadFallbackData();
+        this.buildQuestionPath();
+        return true;
     }
 
     // Fallback data if Supabase unavailable
